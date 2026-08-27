@@ -6,15 +6,15 @@ app = Flask(__name__)
 def get_vid(q):
     try:
         enc = urllib.parse.quote(q)
-        url =f"https://www.youtube.com/results?search_query={enc}"
+        url = f"https://www.youtube.com/results?search_query={enc}"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        data = urllib.request.urlopen(req,timeout=5).read().decode()
-        ids = re.findall(r"\"videoId\":\"([^\"]+)\"",data)
+        data = urllib.request.urlopen(req, timeout=5).read().decode()
+        ids = re.findall(r"\"videoId\":\"([^\"]+)\"", data)
         return ids[0] if ids else None
     except Exception:
         return None
 
-@app.route("/", methods=["GET"])   
+@app.route("/", methods=["GET"])
 def home():
     return render_template("index.html")
 
@@ -24,21 +24,21 @@ def ai_agent_router():
     if not d or ("command" not in d and "text_command" not in d):
         abort(400)
 
-    cmd_raw=d.get("command") or d.get("text_command")
-    cmd=cmd_raw.strip().lower()
+    cmd_raw = d.get("command") or d.get("text_command")
+    cmd = cmd_raw.strip().lower()
 
-    if"youtube" in cmd:
+    if "youtube" in cmd:
         q = cmd
-        patterns=[
+        patterns = [
             "open youtube and search",
             "open youtube and play",
             "open youtube",
             "and play",
             "play",
             "on youtube"
-        ] 
+        ]
         for p in patterns:
-            q = q.replace(p,"")
+            q = q.replace(p, "")
         q = q.strip()
         vid = get_vid(q)
         if vid:
@@ -62,3 +62,22 @@ def ai_agent_router():
 
         if len(parts) > 1:
             body = parts[-1].strip()
+
+        if recip_part:
+            c = recip_part.replace(" at ", "@").replace(" dot ", ".").replace(" ", "")
+            c = re.sub(r'[^a-zA-Z0-9@._%-]', '', c)
+            to = c if "@" in c else f"{c}@gmail.com"
+
+        base = "https://mail.google.com/mail/u/0/?view=cm&fs=1"
+        params = urllib.parse.urlencode({"to": to, "body": body})
+        target = f"{base}&{params}"
+        msg = f"Drafting email to {to}"
+
+    return jsonify({
+        "success": True,
+        "message": msg,
+        "url": target
+    })
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
